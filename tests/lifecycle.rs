@@ -426,3 +426,26 @@ async fn timeout_triggers_error() {
         "expected Timeout error, got: {err:?}"
     );
 }
+
+#[tokio::test]
+async fn with_working_dir_override() {
+    let tmp1 = tempfile::tempdir().unwrap();
+    let tmp2 = tempfile::tempdir().unwrap();
+
+    let Some(tf) = setup_terraform(tmp1.path()) else {
+        eprintln!("terraform not found, skipping test");
+        return;
+    };
+
+    // Write config only in the second directory
+    write_null_config(tmp2.path());
+
+    // Init should fail on tmp1 (no config), but succeed on tmp2 via override
+    let tf2 = tf.with_working_dir(tmp2.path());
+    let output = InitCommand::new().execute(&tf2).await.unwrap();
+    assert!(output.success);
+
+    // Validate the override worked by checking the original is unchanged
+    let result = ValidateCommand::new().no_json().execute(&tf).await;
+    assert!(result.is_err()); // No config in tmp1
+}
