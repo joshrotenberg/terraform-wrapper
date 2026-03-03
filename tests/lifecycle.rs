@@ -397,3 +397,32 @@ async fn state_list_and_show() {
         .await
         .unwrap();
 }
+
+#[tokio::test]
+async fn timeout_triggers_error() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+
+    // Build client with an impossibly short timeout
+    let tf = match Terraform::builder()
+        .working_dir(dir)
+        .timeout(std::time::Duration::from_nanos(1))
+        .build()
+    {
+        Ok(tf) => tf,
+        Err(_) => {
+            eprintln!("terraform not found, skipping test");
+            return;
+        }
+    };
+
+    write_null_config(dir);
+
+    let result = InitCommand::new().execute(&tf).await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(
+        matches!(err, terraform_wrapper::Error::Timeout { .. }),
+        "expected Timeout error, got: {err:?}"
+    );
+}

@@ -51,6 +51,7 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 pub mod command;
 pub mod commands;
@@ -78,6 +79,8 @@ pub struct Terraform {
     pub(crate) global_args: Vec<String>,
     /// Whether to add `-input=false` to commands that support it.
     pub(crate) no_input: bool,
+    /// Default timeout for command execution.
+    pub(crate) timeout: Option<Duration>,
 }
 
 impl Terraform {
@@ -107,6 +110,7 @@ pub struct TerraformBuilder {
     env: HashMap<String, String>,
     no_color: bool,
     input: bool,
+    timeout: Option<Duration>,
 }
 
 impl TerraformBuilder {
@@ -117,6 +121,7 @@ impl TerraformBuilder {
             env: HashMap::new(),
             no_color: true,
             input: false,
+            timeout: None,
         }
     }
 
@@ -165,6 +170,23 @@ impl TerraformBuilder {
         self
     }
 
+    /// Set a default timeout for all command executions.
+    ///
+    /// Commands that exceed this duration will be terminated and return
+    /// [`Error::Timeout`]. No timeout is set by default.
+    #[must_use]
+    pub fn timeout(mut self, duration: Duration) -> Self {
+        self.timeout = Some(duration);
+        self
+    }
+
+    /// Set a default timeout in seconds for all command executions.
+    #[must_use]
+    pub fn timeout_secs(mut self, seconds: u64) -> Self {
+        self.timeout = Some(Duration::from_secs(seconds));
+        self
+    }
+
     /// Build the [`Terraform`] client.
     ///
     /// Resolves the terraform binary in this order:
@@ -193,6 +215,7 @@ impl TerraformBuilder {
             env: self.env,
             global_args,
             no_input: !self.input,
+            timeout: self.timeout,
         })
     }
 }

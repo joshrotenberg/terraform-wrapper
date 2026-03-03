@@ -1,7 +1,7 @@
 use std::process::Stdio;
 
 use tokio::process::Command as TokioCommand;
-use tracing::{debug, trace};
+use tracing::{debug, trace, warn};
 
 use crate::Terraform;
 use crate::error::{Error, Result};
@@ -35,8 +35,10 @@ impl CommandOutput {
 /// Note: `-chdir` is the only true global option (before the subcommand).
 /// Options like `-no-color` and `-input=false` are per-subcommand flags
 /// and are placed after the subcommand name.
+///
+/// Uses the client's default timeout if set.
 pub async fn run_terraform(tf: &Terraform, command_args: Vec<String>) -> Result<CommandOutput> {
-    run_terraform_inner(tf, command_args, &[0]).await
+    run_terraform_inner(tf, command_args, &[0], tf.timeout).await
 }
 
 /// Execute a Terraform command, accepting additional exit codes as success.
@@ -48,13 +50,25 @@ pub async fn run_terraform_allow_exit_codes(
     command_args: Vec<String>,
     allowed_codes: &[i32],
 ) -> Result<CommandOutput> {
-    run_terraform_inner(tf, command_args, allowed_codes).await
+    run_terraform_inner(tf, command_args, allowed_codes, tf.timeout).await
+}
+
+/// Execute a Terraform command with a specific timeout override.
+///
+/// The provided timeout takes precedence over the client's default.
+pub async fn run_terraform_with_timeout(
+    tf: &Terraform,
+    command_args: Vec<String>,
+    timeout: std::time::Duration,
+) -> Result<CommandOutput> {
+    run_terraform_inner(tf, command_args, &[0], Some(timeout)).await
 }
 
 async fn run_terraform_inner(
     tf: &Terraform,
     command_args: Vec<String>,
     allowed_codes: &[i32],
+    timeout: Option<std::time::Duration>,
 ) -> Result<CommandOutput> {
     let mut cmd = TokioCommand::new(&tf.binary);
 
@@ -82,9 +96,26 @@ async fn run_terraform_inner(
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
 
-    trace!(binary = ?tf.binary, args = ?command_args, "executing terraform command");
+    trace!(binary = ?tf.binary, args = ?command_args, timeout_secs = ?timeout.map(|t| t.as_secs()), "executing terraform command");
 
-    let output = cmd.output().await.map_err(|e| {
+    let io_result = if let Some(duration) = timeout {
+        match tokio::time::timeout(duration, cmd.output()).await {
+            Ok(result) => result,
+            Err(_) => {
+                warn!(
+                    timeout_seconds = duration.as_secs(),
+                    "terraform command timed out"
+                );
+                return Err(Error::Timeout {
+                    timeout_seconds: duration.as_secs(),
+                });
+            }
+        }
+    } else {
+        cmd.output().await
+    };
+
+    let output = io_result.map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
             Error::NotFound
         } else {
