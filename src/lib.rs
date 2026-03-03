@@ -7,10 +7,7 @@
 //! # Quick Start
 //!
 //! ```no_run
-//! use terraform_wrapper::{Terraform, TerraformCommand};
-//! use terraform_wrapper::commands::init::InitCommand;
-//! use terraform_wrapper::commands::apply::ApplyCommand;
-//! use terraform_wrapper::commands::output::{OutputCommand, OutputResult};
+//! use terraform_wrapper::prelude::*;
 //!
 //! # async fn example() -> terraform_wrapper::error::Result<()> {
 //! let tf = Terraform::builder()
@@ -33,6 +30,24 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! # Imports
+//!
+//! The [`prelude`] module re-exports everything you need:
+//!
+//! ```rust
+//! use terraform_wrapper::prelude::*;
+//! ```
+//!
+//! Or import selectively from [`commands`]:
+//!
+//! ```rust
+//! use terraform_wrapper::{Terraform, TerraformCommand};
+//! use terraform_wrapper::commands::{InitCommand, ApplyCommand, OutputCommand, OutputResult};
+//! ```
+//!
+//! Note: You must import [`TerraformCommand`] (via prelude or directly) to call
+//! `.execute()` on any command.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -41,6 +56,7 @@ pub mod command;
 pub mod commands;
 pub mod error;
 pub mod exec;
+pub mod prelude;
 #[cfg(feature = "json")]
 pub mod types;
 
