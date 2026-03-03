@@ -1,5 +1,6 @@
 use terraform_wrapper::commands::apply::ApplyCommand;
 use terraform_wrapper::commands::destroy::DestroyCommand;
+use terraform_wrapper::commands::fmt::FmtCommand;
 use terraform_wrapper::commands::init::InitCommand;
 use terraform_wrapper::commands::output::{OutputCommand, OutputResult};
 use terraform_wrapper::commands::plan::PlanCommand;
@@ -215,4 +216,40 @@ output "bad" {
     assert!(!result.valid);
     assert!(result.error_count > 0);
     assert!(!result.diagnostics.is_empty());
+}
+
+#[tokio::test]
+async fn fmt_check_formatted() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+
+    let Some(tf) = setup_terraform(dir) else {
+        eprintln!("terraform not found, skipping test");
+        return;
+    };
+
+    write_null_config(dir);
+
+    // Already-formatted config should pass check
+    let output = FmtCommand::new().check().execute(&tf).await.unwrap();
+    assert_eq!(output.exit_code, 0);
+}
+
+#[tokio::test]
+async fn fmt_check_unformatted() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+
+    let Some(tf) = setup_terraform(dir) else {
+        eprintln!("terraform not found, skipping test");
+        return;
+    };
+
+    // Write badly formatted config
+    let ugly_tf = "resource\"null_resource\"\"x\"{\n}\n";
+    std::fs::write(dir.join("main.tf"), ugly_tf).unwrap();
+
+    // Check should report unformatted (exit code 3)
+    let output = FmtCommand::new().check().execute(&tf).await.unwrap();
+    assert_eq!(output.exit_code, 3);
 }
