@@ -1,8 +1,12 @@
 pub mod apply;
 pub mod destroy;
+pub mod fmt;
+pub mod import;
 pub mod init;
 pub mod output;
 pub mod plan;
 pub mod show;
+pub mod state;
 pub mod validate;
 pub mod version;
+pub mod workspace;
