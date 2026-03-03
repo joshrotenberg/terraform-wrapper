@@ -5,3 +5,4 @@ pub mod output;
 pub mod plan;
 pub mod validate;
 pub mod version;
+pub mod workspace;

@@ -4,6 +4,7 @@ use terraform_wrapper::commands::init::InitCommand;
 use terraform_wrapper::commands::output::{OutputCommand, OutputResult};
 use terraform_wrapper::commands::plan::PlanCommand;
 use terraform_wrapper::commands::validate::ValidateCommand;
+use terraform_wrapper::commands::workspace::WorkspaceCommand;
 use terraform_wrapper::{Terraform, TerraformCommand};
 
 fn setup_terraform(dir: &std::path::Path) -> Option<Terraform> {
@@ -215,4 +216,49 @@ output "bad" {
     assert!(!result.valid);
     assert!(result.error_count > 0);
     assert!(!result.diagnostics.is_empty());
+}
+
+#[tokio::test]
+async fn workspace_lifecycle() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+
+    let Some(tf) = setup_terraform(dir) else {
+        eprintln!("terraform not found, skipping test");
+        return;
+    };
+
+    write_null_config(dir);
+    InitCommand::new().execute(&tf).await.unwrap();
+
+    // Show current workspace (should be "default")
+    let output = WorkspaceCommand::show().execute(&tf).await.unwrap();
+    assert_eq!(output.stdout.trim(), "default");
+
+    // Create new workspace
+    WorkspaceCommand::new_workspace("test-ws")
+        .execute(&tf)
+        .await
+        .unwrap();
+
+    // Verify we switched to it
+    let output = WorkspaceCommand::show().execute(&tf).await.unwrap();
+    assert_eq!(output.stdout.trim(), "test-ws");
+
+    // List workspaces
+    let output = WorkspaceCommand::list().execute(&tf).await.unwrap();
+    assert!(output.stdout.contains("default"));
+    assert!(output.stdout.contains("test-ws"));
+
+    // Switch back to default
+    WorkspaceCommand::select("default")
+        .execute(&tf)
+        .await
+        .unwrap();
+
+    // Delete test workspace
+    WorkspaceCommand::delete("test-ws")
+        .execute(&tf)
+        .await
+        .unwrap();
 }
