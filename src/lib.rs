@@ -288,6 +288,31 @@ impl Terraform {
     pub async fn version(&self) -> Result<types::version::VersionInfo> {
         commands::version::VersionCommand::new().execute(self).await
     }
+
+    /// Create a clone of this client with a different working directory.
+    ///
+    /// Useful for running a single command against a different directory
+    /// without modifying the original client:
+    ///
+    /// ```rust,no_run
+    /// # use terraform_wrapper::prelude::*;
+    /// # async fn example() -> terraform_wrapper::error::Result<()> {
+    /// let tf = Terraform::builder()
+    ///     .working_dir("./infra/network")
+    ///     .build()?;
+    ///
+    /// // Run one command against a different directory
+    /// let compute = tf.with_working_dir("./infra/compute");
+    /// InitCommand::new().execute(&compute).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn with_working_dir(&self, path: impl AsRef<Path>) -> Self {
+        let mut clone = self.clone();
+        clone.working_dir = Some(path.as_ref().to_path_buf());
+        clone
+    }
 }
 
 /// Builder for constructing a [`Terraform`] client.
