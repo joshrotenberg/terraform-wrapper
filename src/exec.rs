@@ -63,18 +63,14 @@ async fn run_terraform_inner(
         cmd.arg(format!("-chdir={}", working_dir.display()));
     }
 
-    // Subcommand name comes first (e.g., "init", "plan", "apply")
-    if let Some(subcommand) = command_args.first() {
-        cmd.arg(subcommand);
-    }
-
-    // Global args (-no-color, -input=false) are per-subcommand flags
-    for arg in &tf.global_args {
+    // Command args (subcommand name + flags)
+    for arg in &command_args {
         cmd.arg(arg);
     }
 
-    // Remaining command-specific args
-    for arg in command_args.iter().skip(1) {
+    // Global args (-no-color) at the end, after all command args.
+    // This handles compound commands like "workspace show" and "state list".
+    for arg in &tf.global_args {
         cmd.arg(arg);
     }
 

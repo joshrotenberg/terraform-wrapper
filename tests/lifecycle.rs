@@ -3,6 +3,7 @@ use terraform_wrapper::commands::destroy::DestroyCommand;
 use terraform_wrapper::commands::init::InitCommand;
 use terraform_wrapper::commands::output::{OutputCommand, OutputResult};
 use terraform_wrapper::commands::plan::PlanCommand;
+use terraform_wrapper::commands::state::StateCommand;
 use terraform_wrapper::commands::validate::ValidateCommand;
 use terraform_wrapper::{Terraform, TerraformCommand};
 
@@ -215,4 +216,40 @@ output "bad" {
     assert!(!result.valid);
     assert!(result.error_count > 0);
     assert!(!result.diagnostics.is_empty());
+}
+
+#[tokio::test]
+async fn state_list_and_show() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+
+    let Some(tf) = setup_terraform(dir) else {
+        eprintln!("terraform not found, skipping test");
+        return;
+    };
+
+    write_null_config(dir);
+    InitCommand::new().execute(&tf).await.unwrap();
+    ApplyCommand::new()
+        .auto_approve()
+        .execute(&tf)
+        .await
+        .unwrap();
+
+    // List should include our resource
+    let output = StateCommand::list().execute(&tf).await.unwrap();
+    assert!(output.stdout.contains("null_resource.example"));
+
+    // Show should include resource details
+    let output = StateCommand::show("null_resource.example")
+        .execute(&tf)
+        .await
+        .unwrap();
+    assert!(output.stdout.contains("null_resource.example"));
+
+    DestroyCommand::new()
+        .auto_approve()
+        .execute(&tf)
+        .await
+        .unwrap();
 }
