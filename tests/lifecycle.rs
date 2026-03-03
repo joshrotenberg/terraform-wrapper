@@ -1,10 +1,13 @@
 use terraform_wrapper::commands::apply::ApplyCommand;
 use terraform_wrapper::commands::destroy::DestroyCommand;
+use terraform_wrapper::commands::fmt::FmtCommand;
 use terraform_wrapper::commands::init::InitCommand;
 use terraform_wrapper::commands::output::{OutputCommand, OutputResult};
 use terraform_wrapper::commands::plan::PlanCommand;
 use terraform_wrapper::commands::show::{ShowCommand, ShowResult};
+use terraform_wrapper::commands::state::StateCommand;
 use terraform_wrapper::commands::validate::ValidateCommand;
+use terraform_wrapper::commands::workspace::WorkspaceCommand;
 use terraform_wrapper::{Terraform, TerraformCommand};
 
 fn setup_terraform(dir: &std::path::Path) -> Option<Terraform> {
@@ -287,4 +290,110 @@ async fn show_saved_plan() {
         }
         _ => panic!("expected Plan variant"),
     }
+}
+
+#[tokio::test]
+async fn fmt_check_formatted() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+
+    let Some(tf) = setup_terraform(dir) else {
+        eprintln!("terraform not found, skipping test");
+        return;
+    };
+
+    write_null_config(dir);
+
+    let output = FmtCommand::new().check().execute(&tf).await.unwrap();
+    assert_eq!(output.exit_code, 0);
+}
+
+#[tokio::test]
+async fn fmt_check_unformatted() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+
+    let Some(tf) = setup_terraform(dir) else {
+        eprintln!("terraform not found, skipping test");
+        return;
+    };
+
+    let ugly_tf = "resource\"null_resource\"\"x\"{\n}\n";
+    std::fs::write(dir.join("main.tf"), ugly_tf).unwrap();
+
+    let output = FmtCommand::new().check().execute(&tf).await.unwrap();
+    assert_eq!(output.exit_code, 3);
+}
+
+#[tokio::test]
+async fn workspace_lifecycle() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+
+    let Some(tf) = setup_terraform(dir) else {
+        eprintln!("terraform not found, skipping test");
+        return;
+    };
+
+    write_null_config(dir);
+    InitCommand::new().execute(&tf).await.unwrap();
+
+    let output = WorkspaceCommand::show().execute(&tf).await.unwrap();
+    assert_eq!(output.stdout.trim(), "default");
+
+    WorkspaceCommand::new_workspace("test-ws")
+        .execute(&tf)
+        .await
+        .unwrap();
+
+    let output = WorkspaceCommand::show().execute(&tf).await.unwrap();
+    assert_eq!(output.stdout.trim(), "test-ws");
+
+    let output = WorkspaceCommand::list().execute(&tf).await.unwrap();
+    assert!(output.stdout.contains("default"));
+    assert!(output.stdout.contains("test-ws"));
+
+    WorkspaceCommand::select("default")
+        .execute(&tf)
+        .await
+        .unwrap();
+
+    WorkspaceCommand::delete("test-ws")
+        .execute(&tf)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn state_list_and_show() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+
+    let Some(tf) = setup_terraform(dir) else {
+        eprintln!("terraform not found, skipping test");
+        return;
+    };
+
+    write_null_config(dir);
+    InitCommand::new().execute(&tf).await.unwrap();
+    ApplyCommand::new()
+        .auto_approve()
+        .execute(&tf)
+        .await
+        .unwrap();
+
+    let output = StateCommand::list().execute(&tf).await.unwrap();
+    assert!(output.stdout.contains("null_resource.example"));
+
+    let output = StateCommand::show("null_resource.example")
+        .execute(&tf)
+        .await
+        .unwrap();
+    assert!(output.stdout.contains("null_resource.example"));
+
+    DestroyCommand::new()
+        .auto_approve()
+        .execute(&tf)
+        .await
+        .unwrap();
 }
