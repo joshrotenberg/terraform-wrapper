@@ -449,3 +449,41 @@ async fn with_working_dir_override() {
     let result = ValidateCommand::new().no_json().execute(&tf).await;
     assert!(result.is_err()); // No config in tmp1
 }
+
+#[tokio::test]
+async fn streaming_apply() {
+    use terraform_wrapper::streaming::{JsonLogLine, stream_terraform};
+
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+
+    let Some(tf) = setup_terraform(dir) else {
+        eprintln!("terraform not found, skipping test");
+        return;
+    };
+
+    write_null_config(dir);
+    InitCommand::new().execute(&tf).await.unwrap();
+
+    let mut events: Vec<JsonLogLine> = Vec::new();
+    let result = stream_terraform(&tf, ApplyCommand::new().auto_approve().json(), |line| {
+        events.push(line);
+    })
+    .await
+    .unwrap();
+
+    assert!(result.success);
+    assert!(!events.is_empty());
+
+    // Should have version, planned_change, change_summary, apply_start, apply_complete, etc.
+    let types: Vec<&str> = events.iter().map(|e| e.log_type.as_str()).collect();
+    assert!(types.contains(&"version"));
+    assert!(types.contains(&"apply_complete"));
+    assert!(types.contains(&"change_summary"));
+
+    DestroyCommand::new()
+        .auto_approve()
+        .execute(&tf)
+        .await
+        .unwrap();
+}

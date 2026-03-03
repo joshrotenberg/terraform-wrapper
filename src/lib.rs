@@ -199,6 +199,40 @@
 //! # }
 //! ```
 //!
+//! # Streaming Output
+//!
+//! Long-running commands like `apply` and `plan` with `-json` produce streaming
+//! NDJSON (one JSON object per line) instead of a single blob. Use
+//! [`streaming::stream_terraform`] to process events as they arrive -- useful
+//! for progress reporting, logging, or UI updates:
+//!
+//! ```rust,no_run
+//! # use terraform_wrapper::prelude::*;
+//! use terraform_wrapper::streaming::{stream_terraform, JsonLogLine};
+//!
+//! # async fn example() -> terraform_wrapper::error::Result<()> {
+//! # let tf = Terraform::builder().build()?;
+//! let result = stream_terraform(
+//!     &tf,
+//!     ApplyCommand::new().auto_approve().json(),
+//!     |line: JsonLogLine| {
+//!         match line.log_type.as_str() {
+//!             "apply_start" => println!("Creating: {}", line.message),
+//!             "apply_progress" => println!("  {}", line.message),
+//!             "apply_complete" => println!("Done: {}", line.message),
+//!             "apply_errored" => eprintln!("Error: {}", line.message),
+//!             "change_summary" => println!("Summary: {}", line.message),
+//!             _ => {}
+//!         }
+//!     },
+//! ).await?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! Common event types: `version`, `planned_change`, `change_summary`,
+//! `apply_start`, `apply_progress`, `apply_complete`, `apply_errored`, `outputs`.
+//!
 //! # Feature Flags
 //!
 //! | Feature | Default | Description |
@@ -251,6 +285,8 @@ pub mod commands;
 pub mod error;
 pub mod exec;
 pub mod prelude;
+#[cfg(feature = "json")]
+pub mod streaming;
 #[cfg(feature = "json")]
 pub mod types;
 

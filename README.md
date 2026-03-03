@@ -20,11 +20,7 @@ Minimum supported Rust version: 1.85.0
 ## Quick Start
 
 ```rust,no_run
-use terraform_wrapper::{Terraform, TerraformCommand};
-use terraform_wrapper::commands::init::InitCommand;
-use terraform_wrapper::commands::apply::ApplyCommand;
-use terraform_wrapper::commands::output::{OutputCommand, OutputResult};
-use terraform_wrapper::commands::destroy::DestroyCommand;
+use terraform_wrapper::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -63,7 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-Note: You must import the `TerraformCommand` trait to call `.execute()`.
+Note: You must import the `TerraformCommand` trait to call `.execute()`. The `prelude` module re-exports everything you need.
 
 ## Commands
 
@@ -75,7 +71,35 @@ Note: You must import the `TerraformCommand` trait to call `.execute()`.
 | `ApplyCommand` | Create or update infrastructure |
 | `DestroyCommand` | Destroy infrastructure |
 | `OutputCommand` | Read output values |
+| `ShowCommand` | Inspect current state or saved plan |
+| `FmtCommand` | Format configuration files |
+| `WorkspaceCommand` | Manage workspaces (list, new, select, delete) |
+| `StateCommand` | Advanced state management (list, show, mv, rm) |
+| `ImportCommand` | Import existing infrastructure into state |
 | `VersionCommand` | Get Terraform version info |
+
+## Streaming Output
+
+Long-running commands like `apply` produce streaming JSON events. Use `stream_terraform` to process them in real-time:
+
+```rust,no_run
+use terraform_wrapper::prelude::*;
+use terraform_wrapper::streaming::{stream_terraform, JsonLogLine};
+
+# async fn example() -> terraform_wrapper::error::Result<()> {
+# let tf = Terraform::builder().build()?;
+let result = stream_terraform(
+    &tf,
+    ApplyCommand::new().auto_approve().json(),
+    |line: JsonLogLine| {
+        println!("[{}] {}", line.log_type, line.message);
+    },
+).await?;
+# Ok(())
+# }
+```
+
+See the [`streaming_apply` example](examples/streaming_apply.rs) for a complete working example.
 
 ## Features
 
