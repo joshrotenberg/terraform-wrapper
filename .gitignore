@@ -1,0 +1,9 @@
+/target
+CLAUDE.md
+
+# Terraform runtime files
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+tfplan
