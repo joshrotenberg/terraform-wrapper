@@ -487,3 +487,54 @@ async fn streaming_apply() {
         .await
         .unwrap();
 }
+
+#[cfg(feature = "config")]
+#[tokio::test]
+async fn config_builder_lifecycle() {
+    use terraform_wrapper::config::TerraformConfig;
+
+    let config = TerraformConfig::new()
+        .required_provider("null", "hashicorp/null", "~> 3.0")
+        .resource(
+            "null_resource",
+            "example",
+            serde_json::json!({ "triggers": { "v": "1" } }),
+        )
+        .output(
+            "id",
+            serde_json::json!({ "value": "${null_resource.example.id}" }),
+        );
+
+    let dir = config.write_to_tempdir().unwrap();
+    let tf = match Terraform::builder().working_dir(dir.path()).build() {
+        Ok(tf) => tf,
+        Err(_) => {
+            eprintln!("terraform not found, skipping test");
+            return;
+        }
+    };
+
+    InitCommand::new().execute(&tf).await.unwrap();
+    ApplyCommand::new()
+        .auto_approve()
+        .execute(&tf)
+        .await
+        .unwrap();
+
+    let result = OutputCommand::new()
+        .name("id")
+        .raw()
+        .execute(&tf)
+        .await
+        .unwrap();
+    match result {
+        OutputResult::Raw(ref id) => assert!(!id.is_empty()),
+        _ => panic!("expected Raw variant"),
+    }
+
+    DestroyCommand::new()
+        .auto_approve()
+        .execute(&tf)
+        .await
+        .unwrap();
+}
