@@ -252,6 +252,8 @@ pub mod error;
 pub mod exec;
 pub mod prelude;
 #[cfg(feature = "json")]
+pub mod streaming;
+#[cfg(feature = "json")]
 pub mod types;
 
 pub use command::TerraformCommand;
