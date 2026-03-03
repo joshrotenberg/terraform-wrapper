@@ -40,6 +40,13 @@ pub enum Error {
         source: std::io::Error,
     },
 
+    /// Command execution timed out.
+    #[error("terraform command timed out after {timeout_seconds}s")]
+    Timeout {
+        /// The timeout duration in seconds.
+        timeout_seconds: u64,
+    },
+
     /// JSON deserialization error.
     #[cfg(feature = "json")]
     #[error("json parse error: {message}")]
