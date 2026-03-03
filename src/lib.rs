@@ -1,32 +1,228 @@
+//! # terraform-wrapper
+//!
 //! A type-safe Terraform CLI wrapper for Rust.
 //!
-//! `terraform-wrapper` provides builder-pattern command structs for driving the
-//! Terraform CLI programmatically. Each command produces typed output and runs
-//! asynchronously via tokio.
+//! This crate provides an idiomatic Rust interface to the Terraform command-line tool.
+//! All commands use a builder pattern and async execution via Tokio.
 //!
 //! # Quick Start
 //!
 //! ```no_run
 //! use terraform_wrapper::prelude::*;
 //!
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let tf = Terraform::builder()
+//!         .working_dir("./infra")
+//!         .build()?;
+//!
+//!     // Initialize, apply, read outputs, destroy
+//!     InitCommand::new().execute(&tf).await?;
+//!
+//!     ApplyCommand::new()
+//!         .auto_approve()
+//!         .var("region", "us-west-2")
+//!         .execute(&tf)
+//!         .await?;
+//!
+//!     let result = OutputCommand::new()
+//!         .name("endpoint")
+//!         .raw()
+//!         .execute(&tf)
+//!         .await?;
+//!
+//!     if let OutputResult::Raw(value) = result {
+//!         println!("Endpoint: {value}");
+//!     }
+//!
+//!     DestroyCommand::new().auto_approve().execute(&tf).await?;
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
+//! # Core Concepts
+//!
+//! ## The `TerraformCommand` Trait
+//!
+//! All commands implement [`TerraformCommand`], which provides the
+//! [`execute()`](TerraformCommand::execute) method. You must import this trait
+//! to call `.execute()`:
+//!
+//! ```rust
+//! use terraform_wrapper::TerraformCommand; // Required for .execute()
+//! ```
+//!
+//! ## Builder Pattern
+//!
+//! Commands are configured using method chaining:
+//!
+//! ```rust,no_run
+//! # use terraform_wrapper::prelude::*;
 //! # async fn example() -> terraform_wrapper::error::Result<()> {
-//! let tf = Terraform::builder()
-//!     .working_dir("/tmp/my-infra")
-//!     .build()?;
-//!
-//! InitCommand::new().execute(&tf).await?;
-//!
+//! # let tf = Terraform::builder().build()?;
 //! ApplyCommand::new()
 //!     .auto_approve()
 //!     .var("region", "us-west-2")
+//!     .var_file("prod.tfvars")
+//!     .target("module.vpc")
+//!     .parallelism(10)
 //!     .execute(&tf)
 //!     .await?;
+//! # Ok(())
+//! # }
+//! ```
 //!
-//! let result = OutputCommand::new()
-//!     .name("public_ip")
-//!     .raw()
-//!     .execute(&tf)
-//!     .await?;
+//! ## The `Terraform` Client
+//!
+//! The [`Terraform`] struct holds shared configuration (binary path, working
+//! directory, environment variables) passed to every command:
+//!
+//! ```rust,no_run
+//! # use terraform_wrapper::prelude::*;
+//! # fn example() -> terraform_wrapper::error::Result<()> {
+//! let tf = Terraform::builder()
+//!     .working_dir("./infra")
+//!     .env("AWS_REGION", "us-west-2")
+//!     .env_var("instance_type", "t3.medium")  // Sets TF_VAR_instance_type
+//!     .timeout_secs(300)
+//!     .build()?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! Programmatic defaults: `-no-color` and `-input=false` are enabled by default.
+//! Override with `.color(true)` and `.input(true)`.
+//!
+//! ## Error Handling
+//!
+//! All commands return `Result<T, terraform_wrapper::Error>`. The error type
+//! implements `std::error::Error`, so it works with `anyhow` and other error
+//! libraries via `?`:
+//!
+//! ```rust,no_run
+//! # use terraform_wrapper::prelude::*;
+//! # use terraform_wrapper::Error;
+//! # async fn example() -> terraform_wrapper::error::Result<()> {
+//! # let tf = Terraform::builder().build()?;
+//! match InitCommand::new().execute(&tf).await {
+//!     Ok(output) => println!("Initialized: {}", output.stdout),
+//!     Err(Error::NotFound) => eprintln!("Terraform binary not found"),
+//!     Err(Error::CommandFailed { stderr, .. }) => eprintln!("Failed: {stderr}"),
+//!     Err(Error::Timeout { timeout_seconds }) => eprintln!("Timed out after {timeout_seconds}s"),
+//!     Err(e) => eprintln!("Error: {e}"),
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Command Categories
+//!
+//! ## Lifecycle
+//!
+//! ```rust
+//! use terraform_wrapper::commands::{
+//!     InitCommand,     // terraform init
+//!     PlanCommand,     // terraform plan
+//!     ApplyCommand,    // terraform apply
+//!     DestroyCommand,  // terraform destroy
+//! };
+//! ```
+//!
+//! ## Inspection
+//!
+//! ```rust
+//! use terraform_wrapper::commands::{
+//!     ValidateCommand, // terraform validate
+//!     ShowCommand,     // terraform show (state or plan)
+//!     OutputCommand,   // terraform output
+//!     FmtCommand,      // terraform fmt
+//!     VersionCommand,  // terraform version
+//! };
+//! ```
+//!
+//! ## State and Workspace Management
+//!
+//! ```rust
+//! use terraform_wrapper::commands::{
+//!     StateCommand,     // terraform state (list, show, mv, rm, pull, push)
+//!     WorkspaceCommand, // terraform workspace (list, show, new, select, delete)
+//!     ImportCommand,    // terraform import
+//! };
+//! ```
+//!
+//! # JSON Output Types
+//!
+//! With the `json` feature (enabled by default), commands return typed structs
+//! instead of raw strings:
+//!
+//! ```rust,no_run
+//! # use terraform_wrapper::prelude::*;
+//! # async fn example() -> terraform_wrapper::error::Result<()> {
+//! # let tf = Terraform::builder().build()?;
+//! // Version info
+//! let info = tf.version().await?;
+//! println!("Terraform {} on {}", info.terraform_version, info.platform);
+//!
+//! // Validate with diagnostics
+//! let result = ValidateCommand::new().execute(&tf).await?;
+//! if !result.valid {
+//!     for diag in &result.diagnostics {
+//!         eprintln!("[{}] {}: {}", diag.severity, diag.summary, diag.detail);
+//!     }
+//! }
+//!
+//! // Show state with typed resources
+//! let result = ShowCommand::new().execute(&tf).await?;
+//! if let ShowResult::State(state) = result {
+//!     for resource in &state.values.root_module.resources {
+//!         println!("{} ({})", resource.address, resource.resource_type);
+//!     }
+//! }
+//!
+//! // Show plan with resource changes
+//! let result = ShowCommand::new().plan_file("tfplan").execute(&tf).await?;
+//! if let ShowResult::Plan(plan) = result {
+//!     for change in &plan.resource_changes {
+//!         println!("{}: {:?}", change.address, change.change.actions);
+//!     }
+//! }
+//!
+//! // Output values
+//! let result = OutputCommand::new().json().execute(&tf).await?;
+//! if let OutputResult::Json(outputs) = result {
+//!     for (name, val) in &outputs {
+//!         println!("{name} = {}", val.value);
+//!     }
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Feature Flags
+//!
+//! | Feature | Default | Description |
+//! |---------|---------|-------------|
+//! | `json` | Yes | Typed JSON output parsing via `serde` / `serde_json` |
+//!
+//! Disable for raw command output only:
+//!
+//! ```toml
+//! terraform-wrapper = { version = "0.1", default-features = false }
+//! ```
+//!
+//! # OpenTofu Compatibility
+//!
+//! [OpenTofu](https://opentofu.org/) works out of the box by pointing the client
+//! at the `tofu` binary:
+//!
+//! ```rust,no_run
+//! # use terraform_wrapper::prelude::*;
+//! # fn example() -> terraform_wrapper::error::Result<()> {
+//! let tf = Terraform::builder()
+//!     .binary("tofu")
+//!     .working_dir("./infra")
+//!     .build()?;
 //! # Ok(())
 //! # }
 //! ```
@@ -45,9 +241,6 @@
 //! use terraform_wrapper::{Terraform, TerraformCommand};
 //! use terraform_wrapper::commands::{InitCommand, ApplyCommand, OutputCommand, OutputResult};
 //! ```
-//!
-//! Note: You must import [`TerraformCommand`] (via prelude or directly) to call
-//! `.execute()` on any command.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
