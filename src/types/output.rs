@@ -6,9 +6,14 @@ pub struct OutputValue {
     /// Whether the output is marked as sensitive.
     pub sensitive: bool,
     /// The Terraform type expression (as a JSON value).
-    #[serde(rename = "type")]
+    ///
+    /// May be absent in plan output for outputs whose type is not yet known.
+    #[serde(rename = "type", default)]
     pub output_type: serde_json::Value,
     /// The output value.
+    ///
+    /// May be absent in plan output for outputs whose value is not yet known.
+    #[serde(default)]
     pub value: serde_json::Value,
 }
 
