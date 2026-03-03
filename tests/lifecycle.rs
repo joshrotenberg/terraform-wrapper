@@ -3,6 +3,7 @@ use terraform_wrapper::commands::destroy::DestroyCommand;
 use terraform_wrapper::commands::init::InitCommand;
 use terraform_wrapper::commands::output::{OutputCommand, OutputResult};
 use terraform_wrapper::commands::plan::PlanCommand;
+use terraform_wrapper::commands::validate::ValidateCommand;
 use terraform_wrapper::{Terraform, TerraformCommand};
 
 fn setup_terraform(dir: &std::path::Path) -> Option<Terraform> {
@@ -172,4 +173,46 @@ async fn apply_with_var_override() {
         .execute(&tf)
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn validate_valid_config() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+
+    let Some(tf) = setup_terraform(dir) else {
+        eprintln!("terraform not found, skipping test");
+        return;
+    };
+
+    write_null_config(dir);
+    InitCommand::new().execute(&tf).await.unwrap();
+
+    let result = ValidateCommand::new().execute(&tf).await.unwrap();
+    assert!(result.valid);
+    assert_eq!(result.error_count, 0);
+}
+
+#[tokio::test]
+async fn validate_invalid_config() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+
+    let Some(tf) = setup_terraform(dir) else {
+        eprintln!("terraform not found, skipping test");
+        return;
+    };
+
+    // Write invalid config (reference to nonexistent resource)
+    let bad_tf = r#"
+output "bad" {
+  value = nonexistent_resource.foo.id
+}
+"#;
+    std::fs::write(dir.join("main.tf"), bad_tf).unwrap();
+
+    let result = ValidateCommand::new().execute(&tf).await.unwrap();
+    assert!(!result.valid);
+    assert!(result.error_count > 0);
+    assert!(!result.diagnostics.is_empty());
 }
