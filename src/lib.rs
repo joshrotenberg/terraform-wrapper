@@ -282,6 +282,8 @@ use std::time::Duration;
 
 pub mod command;
 pub mod commands;
+#[cfg(feature = "config")]
+pub mod config;
 pub mod error;
 pub mod exec;
 pub mod prelude;
