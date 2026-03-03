@@ -3,6 +3,7 @@ use terraform_wrapper::commands::destroy::DestroyCommand;
 use terraform_wrapper::commands::init::InitCommand;
 use terraform_wrapper::commands::output::{OutputCommand, OutputResult};
 use terraform_wrapper::commands::plan::PlanCommand;
+use terraform_wrapper::commands::show::{ShowCommand, ShowResult};
 use terraform_wrapper::commands::validate::ValidateCommand;
 use terraform_wrapper::{Terraform, TerraformCommand};
 
@@ -215,4 +216,75 @@ output "bad" {
     assert!(!result.valid);
     assert!(result.error_count > 0);
     assert!(!result.diagnostics.is_empty());
+}
+
+#[tokio::test]
+async fn show_current_state() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+
+    let Some(tf) = setup_terraform(dir) else {
+        eprintln!("terraform not found, skipping test");
+        return;
+    };
+
+    write_null_config(dir);
+    InitCommand::new().execute(&tf).await.unwrap();
+    ApplyCommand::new()
+        .auto_approve()
+        .execute(&tf)
+        .await
+        .unwrap();
+
+    let result = ShowCommand::new().execute(&tf).await.unwrap();
+    match result {
+        ShowResult::State(state) => {
+            assert_eq!(state.format_version, "1.0");
+            assert!(!state.terraform_version.is_empty());
+            assert_eq!(state.values.root_module.resources.len(), 1);
+            assert_eq!(
+                state.values.root_module.resources[0].address,
+                "null_resource.example"
+            );
+            assert!(state.values.outputs.contains_key("trigger"));
+        }
+        _ => panic!("expected State variant"),
+    }
+
+    DestroyCommand::new()
+        .auto_approve()
+        .execute(&tf)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn show_saved_plan() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+
+    let Some(tf) = setup_terraform(dir) else {
+        eprintln!("terraform not found, skipping test");
+        return;
+    };
+
+    write_null_config(dir);
+    InitCommand::new().execute(&tf).await.unwrap();
+    PlanCommand::new().out("tfplan").execute(&tf).await.unwrap();
+
+    let result = ShowCommand::new()
+        .plan_file("tfplan")
+        .execute(&tf)
+        .await
+        .unwrap();
+    match result {
+        ShowResult::Plan(plan) => {
+            assert!(!plan.terraform_version.is_empty());
+            assert_eq!(plan.resource_changes.len(), 1);
+            assert_eq!(plan.resource_changes[0].address, "null_resource.example");
+            assert_eq!(plan.resource_changes[0].change.actions, vec!["create"]);
+            assert!(plan.applyable);
+        }
+        _ => panic!("expected Plan variant"),
+    }
 }
