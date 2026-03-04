@@ -133,13 +133,15 @@
 //!
 //! ```rust
 //! use terraform_wrapper::commands::{
-//!     ValidateCommand, // terraform validate
-//!     ShowCommand,     // terraform show (state or plan)
-//!     OutputCommand,   // terraform output
-//!     FmtCommand,      // terraform fmt
-//!     GraphCommand,    // terraform graph (DOT format)
-//!     ModulesCommand,  // terraform modules
-//!     VersionCommand,  // terraform version
+//!     ValidateCommand,  // terraform validate
+//!     ShowCommand,      // terraform show (state or plan)
+//!     OutputCommand,    // terraform output
+//!     FmtCommand,       // terraform fmt
+//!     GraphCommand,     // terraform graph (DOT format)
+//!     ModulesCommand,   // terraform modules
+//!     ProvidersCommand, // terraform providers (lock, mirror, schema)
+//!     TestCommand,      // terraform test
+//!     VersionCommand,   // terraform version
 //! };
 //! ```
 //!
@@ -152,6 +154,7 @@
 //!     ImportCommand,      // terraform import
 //!     ForceUnlockCommand, // terraform force-unlock
 //!     GetCommand,         // terraform get (download modules)
+//!     RefreshCommand,     // terraform refresh (deprecated)
 //! };
 //! ```
 //!
