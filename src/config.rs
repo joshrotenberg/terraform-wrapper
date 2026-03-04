@@ -48,6 +48,8 @@ pub struct TerraformConfig {
     output: BTreeMap<String, Value>,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     locals: BTreeMap<String, Value>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    module: BTreeMap<String, Value>,
 }
 
 /// The `terraform` block (required_providers, backend, etc.).
@@ -221,6 +223,24 @@ impl TerraformConfig {
         self
     }
 
+    /// Add a module reference.
+    ///
+    /// ```rust
+    /// # use terraform_wrapper::config::TerraformConfig;
+    /// # use serde_json::json;
+    /// let config = TerraformConfig::new()
+    ///     .module("vpc", json!({
+    ///         "source": "terraform-aws-modules/vpc/aws",
+    ///         "version": "~> 5.0",
+    ///         "cidr": "10.0.0.0/16"
+    ///     }));
+    /// ```
+    #[must_use]
+    pub fn module(mut self, name: &str, config: Value) -> Self {
+        self.module.insert(name.to_string(), config);
+        self
+    }
+
     /// Serialize to a JSON string.
     pub fn to_json(&self) -> serde_json::Result<String> {
         serde_json::to_string(self)
@@ -326,6 +346,53 @@ mod tests {
         let config = TerraformConfig::new().backend("s3", json!({ "bucket": "my-state" }));
         let val: Value = serde_json::from_str(&config.to_json().unwrap()).unwrap();
         assert_eq!(val["terraform"]["backend"]["s3"]["bucket"], "my-state");
+    }
+
+    #[test]
+    fn module_block() {
+        let config = TerraformConfig::new().module(
+            "vpc",
+            json!({
+                "source": "terraform-aws-modules/vpc/aws",
+                "version": "~> 5.0",
+                "cidr": "10.0.0.0/16"
+            }),
+        );
+        let val: Value = serde_json::from_str(&config.to_json().unwrap()).unwrap();
+        assert_eq!(
+            val["module"]["vpc"]["source"],
+            "terraform-aws-modules/vpc/aws"
+        );
+        assert_eq!(val["module"]["vpc"]["version"], "~> 5.0");
+        assert_eq!(val["module"]["vpc"]["cidr"], "10.0.0.0/16");
+    }
+
+    #[test]
+    fn multiple_modules() {
+        let config = TerraformConfig::new()
+            .module(
+                "vpc",
+                json!({
+                    "source": "terraform-aws-modules/vpc/aws",
+                    "version": "~> 5.0"
+                }),
+            )
+            .module(
+                "eks",
+                json!({
+                    "source": "terraform-aws-modules/eks/aws",
+                    "version": "~> 19.0"
+                }),
+            );
+        let val: Value = serde_json::from_str(&config.to_json().unwrap()).unwrap();
+        assert_eq!(
+            val["module"]["vpc"]["source"],
+            "terraform-aws-modules/vpc/aws"
+        );
+        assert_eq!(
+            val["module"]["eks"]["source"],
+            "terraform-aws-modules/eks/aws"
+        );
     }
 
     #[test]
