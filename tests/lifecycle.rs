@@ -466,9 +466,14 @@ async fn streaming_apply() {
     InitCommand::new().execute(&tf).await.unwrap();
 
     let mut events: Vec<JsonLogLine> = Vec::new();
-    let result = stream_terraform(&tf, ApplyCommand::new().auto_approve().json(), |line| {
-        events.push(line);
-    })
+    let result = stream_terraform(
+        &tf,
+        ApplyCommand::new().auto_approve().json(),
+        &[0],
+        |line| {
+            events.push(line);
+        },
+    )
     .await
     .unwrap();
 

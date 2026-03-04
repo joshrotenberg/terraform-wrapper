@@ -39,6 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = stream_terraform(
         &tf,
         ApplyCommand::new().auto_approve().json(),
+        &[0],
         |line: JsonLogLine| match line.log_type.as_str() {
             "version" => println!("  Terraform {}", line.message),
             "planned_change" => println!("  PLAN: {}", line.message),
