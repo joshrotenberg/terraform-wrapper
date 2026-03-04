@@ -75,8 +75,9 @@ impl TerraformCommand for ValidateCommand {
         // validate returns exit code 1 for invalid config, but with -json
         // it still writes valid JSON to stdout. Accept both exit codes.
         let output = exec::run_terraform_allow_exit_codes(tf, self.args(), &[0, 1]).await?;
-        serde_json::from_str(&output.stdout).map_err(|e| crate::error::Error::ParseError {
-            message: format!("failed to parse validate json: {e}"),
+        serde_json::from_str(&output.stdout).map_err(|e| crate::error::Error::Json {
+            message: "failed to parse validate json".to_string(),
+            source: e,
         })
     }
 }
