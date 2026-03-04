@@ -101,9 +101,45 @@ let result = stream_terraform(
 
 See the [`streaming_apply` example](examples/streaming_apply.rs) for a complete working example.
 
+## Config Builder
+
+Define Terraform configs entirely in Rust -- no `.tf` files needed. Enable the `config` feature:
+
+```toml
+[dependencies]
+terraform-wrapper = { version = "0.1", features = ["config"] }
+```
+
+```rust,no_run
+use terraform_wrapper::config::TerraformConfig;
+use serde_json::json;
+
+# fn example() -> std::io::Result<()> {
+let config = TerraformConfig::new()
+    .required_provider("aws", "hashicorp/aws", "~> 5.0")
+    .provider("aws", json!({ "region": "us-west-2" }))
+    .resource("aws_instance", "web", json!({
+        "ami": "ami-0c55b159",
+        "instance_type": "t3.micro"
+    }))
+    .output("id", json!({ "value": "${aws_instance.web.id}" }));
+
+let dir = config.write_to_tempdir()?;
+// Terraform::builder().working_dir(dir.path()).build()?;
+# Ok(())
+# }
+```
+
+See the [`config_builder` example](examples/config_builder.rs) for a complete working example.
+
 ## Features
 
-JSON output parsing is enabled by default. Disable it if you only need raw command output:
+| Feature | Default | Description |
+|---------|---------|-------------|
+| `json` | Yes | Typed JSON output parsing via `serde` / `serde_json` |
+| `config` | No | `TerraformConfig` builder for `.tf.json` generation |
+
+Disable defaults for raw command output only:
 
 ```toml
 [dependencies]

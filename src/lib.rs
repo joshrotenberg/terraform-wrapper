@@ -137,6 +137,8 @@
 //!     ShowCommand,     // terraform show (state or plan)
 //!     OutputCommand,   // terraform output
 //!     FmtCommand,      // terraform fmt
+//!     GraphCommand,    // terraform graph (DOT format)
+//!     ModulesCommand,  // terraform modules
 //!     VersionCommand,  // terraform version
 //! };
 //! ```
@@ -145,9 +147,11 @@
 //!
 //! ```rust
 //! use terraform_wrapper::commands::{
-//!     StateCommand,     // terraform state (list, show, mv, rm, pull, push)
-//!     WorkspaceCommand, // terraform workspace (list, show, new, select, delete)
-//!     ImportCommand,    // terraform import
+//!     StateCommand,       // terraform state (list, show, mv, rm, pull, push)
+//!     WorkspaceCommand,   // terraform workspace (list, show, new, select, delete)
+//!     ImportCommand,      // terraform import
+//!     ForceUnlockCommand, // terraform force-unlock
+//!     GetCommand,         // terraform get (download modules)
 //! };
 //! ```
 //!
@@ -233,13 +237,49 @@
 //! Common event types: `version`, `planned_change`, `change_summary`,
 //! `apply_start`, `apply_progress`, `apply_complete`, `apply_errored`, `outputs`.
 //!
+//! # Config Builder
+//!
+//! With the `config` feature, define Terraform configurations entirely in Rust.
+//! No `.tf` files needed -- generates `.tf.json` that Terraform processes natively:
+//!
+//! ```rust
+//! # #[cfg(feature = "config")]
+//! # fn example() -> std::io::Result<()> {
+//! use terraform_wrapper::config::TerraformConfig;
+//! use serde_json::json;
+//!
+//! let config = TerraformConfig::new()
+//!     .required_provider("aws", "hashicorp/aws", "~> 5.0")
+//!     .provider("aws", json!({ "region": "us-west-2" }))
+//!     .resource("aws_instance", "web", json!({
+//!         "ami": "ami-0c55b159",
+//!         "instance_type": "${var.instance_type}"
+//!     }))
+//!     .variable("instance_type", json!({
+//!         "type": "string", "default": "t3.micro"
+//!     }))
+//!     .output("id", json!({ "value": "${aws_instance.web.id}" }));
+//!
+//! // Write to a tempdir for ephemeral use
+//! let dir = config.write_to_tempdir()?;
+//! // Terraform::builder().working_dir(dir.path()).build()?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! Enable with:
+//! ```toml
+//! terraform-wrapper = { version = "0.1", features = ["config"] }
+//! ```
+//!
 //! # Feature Flags
 //!
 //! | Feature | Default | Description |
 //! |---------|---------|-------------|
 //! | `json` | Yes | Typed JSON output parsing via `serde` / `serde_json` |
+//! | `config` | No | [`TerraformConfig`](config::TerraformConfig) builder for `.tf.json` generation |
 //!
-//! Disable for raw command output only:
+//! Disable defaults for raw command output only:
 //!
 //! ```toml
 //! terraform-wrapper = { version = "0.1", default-features = false }
@@ -282,6 +322,8 @@ use std::time::Duration;
 
 pub mod command;
 pub mod commands;
+#[cfg(feature = "config")]
+pub mod config;
 pub mod error;
 pub mod exec;
 pub mod prelude;

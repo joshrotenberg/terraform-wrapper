@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0](https://github.com/joshrotenberg/terraform-wrapper/compare/v0.1.1...v0.2.0) - 2026-03-03
+
+### Added
+
+- add TerraformConfig builder for .tf.json generation ([#39](https://github.com/joshrotenberg/terraform-wrapper/pull/39))
+- add streaming JSON output support ([#37](https://github.com/joshrotenberg/terraform-wrapper/pull/37))
+- add per-command working directory override ([#36](https://github.com/joshrotenberg/terraform-wrapper/pull/36))
+- add command timeout support ([#34](https://github.com/joshrotenberg/terraform-wrapper/pull/34))
+- add re-exports and prelude module for ergonomic imports ([#33](https://github.com/joshrotenberg/terraform-wrapper/pull/33))
+- add GCP Compute Engine example ([#30](https://github.com/joshrotenberg/terraform-wrapper/pull/30))
+
+### Other
+
+- enrich rustdoc with comprehensive front page documentation ([#35](https://github.com/joshrotenberg/terraform-wrapper/pull/35))
+
 ## [0.1.1](https://github.com/joshrotenberg/terraform-wrapper/compare/v0.1.0...v0.1.1) - 2026-03-03
 
 ### Added
