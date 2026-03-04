@@ -102,15 +102,7 @@ where
     C: TerraformCommand,
     F: FnMut(JsonLogLine),
 {
-    let mut args = command.args();
-
-    // Inject -input=false for commands that support it (same as the command's execute())
-    if tf.no_input {
-        let subcmd = args.first().map(String::as_str).unwrap_or("");
-        if matches!(subcmd, "init" | "plan" | "apply" | "destroy" | "import") {
-            args.insert(1, "-input=false".to_string());
-        }
-    }
+    let args = command.prepare_args(tf);
 
     let mut cmd = TokioCommand::new(&tf.binary);
 

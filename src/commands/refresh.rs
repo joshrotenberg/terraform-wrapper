@@ -131,12 +131,12 @@ impl TerraformCommand for RefreshCommand {
         args
     }
 
+    fn supports_input(&self) -> bool {
+        true
+    }
+
     async fn execute(&self, tf: &Terraform) -> Result<CommandOutput> {
-        let mut args = self.args();
-        if tf.no_input {
-            args.insert(1, "-input=false".to_string());
-        }
-        exec::run_terraform(tf, args).await
+        exec::run_terraform(tf, self.prepare_args(tf)).await
     }
 }
 

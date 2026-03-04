@@ -190,12 +190,12 @@ impl TerraformCommand for PlanCommand {
         args
     }
 
+    fn supports_input(&self) -> bool {
+        true
+    }
+
     async fn execute(&self, tf: &Terraform) -> Result<CommandOutput> {
-        let mut args = self.args();
-        if tf.no_input {
-            args.insert(1, "-input=false".to_string());
-        }
-        exec::run_terraform_allow_exit_codes(tf, args, &[0, 2]).await
+        exec::run_terraform_allow_exit_codes(tf, self.prepare_args(tf), &[0, 2]).await
     }
 }
 
