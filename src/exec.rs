@@ -1,3 +1,4 @@
+use std::fmt;
 use std::process::Stdio;
 
 use tokio::process::Command as TokioCommand;
@@ -24,6 +25,12 @@ impl CommandOutput {
     #[must_use]
     pub fn stdout_lines(&self) -> Vec<&str> {
         self.stdout.lines().collect()
+    }
+}
+
+impl fmt::Display for CommandOutput {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.stdout.trim())
     }
 }
 
@@ -152,4 +159,42 @@ async fn run_terraform_inner(
         exit_code,
         success,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn display_command_output_trims_whitespace() {
+        let output = CommandOutput {
+            stdout: "  hello world  \n".to_string(),
+            stderr: String::new(),
+            exit_code: 0,
+            success: true,
+        };
+        assert_eq!(output.to_string(), "hello world");
+    }
+
+    #[test]
+    fn display_command_output_empty() {
+        let output = CommandOutput {
+            stdout: String::new(),
+            stderr: String::new(),
+            exit_code: 0,
+            success: true,
+        };
+        assert_eq!(output.to_string(), "");
+    }
+
+    #[test]
+    fn display_command_output_multiline() {
+        let output = CommandOutput {
+            stdout: "line1\nline2\nline3\n".to_string(),
+            stderr: String::new(),
+            exit_code: 0,
+            success: true,
+        };
+        assert_eq!(output.to_string(), "line1\nline2\nline3");
+    }
 }
