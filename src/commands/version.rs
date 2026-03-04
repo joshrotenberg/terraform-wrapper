@@ -60,8 +60,9 @@ impl TerraformCommand for VersionCommand {
 
     async fn execute(&self, tf: &Terraform) -> Result<VersionInfo> {
         let output = exec::run_terraform(tf, self.args()).await?;
-        serde_json::from_str(&output.stdout).map_err(|e| crate::error::Error::ParseError {
-            message: format!("failed to parse version json: {e}"),
+        serde_json::from_str(&output.stdout).map_err(|e| crate::error::Error::Json {
+            message: "failed to parse version json".to_string(),
+            source: e,
         })
     }
 }

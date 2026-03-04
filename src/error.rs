@@ -23,13 +23,6 @@ pub enum Error {
         stderr: String,
     },
 
-    /// Failed to parse command output.
-    #[error("failed to parse terraform output: {message}")]
-    ParseError {
-        /// Description of what failed to parse.
-        message: String,
-    },
-
     /// IO error during subprocess execution.
     #[error("io error: {message}")]
     Io {

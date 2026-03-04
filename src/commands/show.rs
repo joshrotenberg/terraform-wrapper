@@ -109,8 +109,9 @@ impl TerraformCommand for ShowCommand {
         #[cfg(feature = "json")]
         if self.plan_file.is_some() {
             let plan: crate::types::plan::PlanRepresentation = serde_json::from_str(&output.stdout)
-                .map_err(|e| crate::error::Error::ParseError {
-                    message: format!("failed to parse plan json: {e}"),
+                .map_err(|e| crate::error::Error::Json {
+                    message: "failed to parse plan json".to_string(),
+                    source: e,
                 })?;
             return Ok(ShowResult::Plan(Box::new(plan)));
         }
@@ -118,10 +119,9 @@ impl TerraformCommand for ShowCommand {
         #[cfg(feature = "json")]
         {
             let state: crate::types::state::StateRepresentation =
-                serde_json::from_str(&output.stdout).map_err(|e| {
-                    crate::error::Error::ParseError {
-                        message: format!("failed to parse state json: {e}"),
-                    }
+                serde_json::from_str(&output.stdout).map_err(|e| crate::error::Error::Json {
+                    message: "failed to parse state json".to_string(),
+                    source: e,
                 })?;
             Ok(ShowResult::State(state))
         }

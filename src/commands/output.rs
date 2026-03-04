@@ -119,16 +119,16 @@ impl TerraformCommand for OutputCommand {
         if self.json {
             if self.name.is_some() {
                 let value: crate::types::output::OutputValue = serde_json::from_str(&output.stdout)
-                    .map_err(|e| crate::error::Error::ParseError {
-                        message: format!("failed to parse output json: {e}"),
+                    .map_err(|e| crate::error::Error::Json {
+                        message: "failed to parse output json".to_string(),
+                        source: e,
                     })?;
                 return Ok(OutputResult::Single(value));
             }
             let values: HashMap<String, crate::types::output::OutputValue> =
-                serde_json::from_str(&output.stdout).map_err(|e| {
-                    crate::error::Error::ParseError {
-                        message: format!("failed to parse output json: {e}"),
-                    }
+                serde_json::from_str(&output.stdout).map_err(|e| crate::error::Error::Json {
+                    message: "failed to parse output json".to_string(),
+                    source: e,
                 })?;
             return Ok(OutputResult::Json(values));
         }
