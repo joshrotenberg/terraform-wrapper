@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 
 use crate::Terraform;
 use crate::command::TerraformCommand;
@@ -23,6 +24,25 @@ pub enum OutputResult {
     Single(crate::types::output::OutputValue),
     /// Plain command output (no `-json` or `-raw`).
     Plain(exec::CommandOutput),
+}
+
+impl fmt::Display for OutputResult {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            OutputResult::Raw(s) => write!(f, "{s}"),
+            #[cfg(feature = "json")]
+            OutputResult::Single(v) => {
+                let pretty = serde_json::to_string_pretty(v).map_err(|_| fmt::Error)?;
+                write!(f, "{pretty}")
+            }
+            #[cfg(feature = "json")]
+            OutputResult::Json(map) => {
+                let pretty = serde_json::to_string_pretty(map).map_err(|_| fmt::Error)?;
+                write!(f, "{pretty}")
+            }
+            OutputResult::Plain(output) => write!(f, "{output}"),
+        }
+    }
 }
 
 /// Command for reading Terraform output values.
@@ -173,5 +193,55 @@ mod tests {
         let args = cmd.args();
         // Name should be the last positional argument
         assert_eq!(args.last().unwrap(), "endpoint");
+    }
+
+    #[test]
+    fn display_raw() {
+        let result = OutputResult::Raw("10.0.1.5".to_string());
+        assert_eq!(result.to_string(), "10.0.1.5");
+    }
+
+    #[test]
+    fn display_plain() {
+        let output = exec::CommandOutput {
+            stdout: "some output\n".to_string(),
+            stderr: String::new(),
+            exit_code: 0,
+            success: true,
+        };
+        let result = OutputResult::Plain(output);
+        assert_eq!(result.to_string(), "some output");
+    }
+
+    #[cfg(feature = "json")]
+    #[test]
+    fn display_single() {
+        let value = crate::types::output::OutputValue {
+            sensitive: false,
+            output_type: serde_json::json!("string"),
+            value: serde_json::json!("10.0.1.5"),
+        };
+        let result = OutputResult::Single(value);
+        let displayed = result.to_string();
+        assert!(displayed.contains("\"value\": \"10.0.1.5\""));
+        assert!(displayed.contains("\"sensitive\": false"));
+    }
+
+    #[cfg(feature = "json")]
+    #[test]
+    fn display_json_map() {
+        let mut map = HashMap::new();
+        map.insert(
+            "ip".to_string(),
+            crate::types::output::OutputValue {
+                sensitive: false,
+                output_type: serde_json::json!("string"),
+                value: serde_json::json!("1.2.3.4"),
+            },
+        );
+        let result = OutputResult::Json(map);
+        let displayed = result.to_string();
+        assert!(displayed.contains("\"ip\""));
+        assert!(displayed.contains("\"value\": \"1.2.3.4\""));
     }
 }
