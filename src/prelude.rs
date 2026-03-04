@@ -11,7 +11,7 @@ pub use crate::Terraform;
 pub use crate::command::TerraformCommand;
 pub use crate::commands::{
     ApplyCommand, DestroyCommand, FmtCommand, ImportCommand, InitCommand, OutputCommand,
-    OutputResult, PlanCommand, ShowCommand, ShowResult, StateCommand, ValidateCommand,
+    OutputResult, PlanCommand, RawCommand, ShowCommand, ShowResult, StateCommand, ValidateCommand,
     VersionCommand, WorkspaceCommand,
 };
 pub use crate::exec::CommandOutput;
