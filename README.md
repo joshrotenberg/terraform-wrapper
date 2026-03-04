@@ -91,6 +91,7 @@ use terraform_wrapper::streaming::{stream_terraform, JsonLogLine};
 let result = stream_terraform(
     &tf,
     ApplyCommand::new().auto_approve().json(),
+    &[0],
     |line: JsonLogLine| {
         println!("[{}] {}", line.log_type, line.message);
     },

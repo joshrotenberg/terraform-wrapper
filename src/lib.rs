@@ -222,6 +222,7 @@
 //! let result = stream_terraform(
 //!     &tf,
 //!     ApplyCommand::new().auto_approve().json(),
+//!     &[0],
 //!     |line: JsonLogLine| {
 //!         match line.log_type.as_str() {
 //!             "apply_start" => println!("Creating: {}", line.message),

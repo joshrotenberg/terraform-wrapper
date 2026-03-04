@@ -15,7 +15,7 @@
 //! # async fn example() -> terraform_wrapper::error::Result<()> {
 //! let tf = Terraform::builder().working_dir("./infra").build()?;
 //!
-//! let result = stream_terraform(&tf, ApplyCommand::new().auto_approve().json(), |line| {
+//! let result = stream_terraform(&tf, ApplyCommand::new().auto_approve().json(), &[0], |line| {
 //!     println!("[{}] {}", line.log_type, line.message);
 //! }).await?;
 //!
@@ -79,6 +79,13 @@ pub struct JsonLogLine {
 /// as it arrives on stdout. Lines that fail to parse as JSON are logged and
 /// skipped.
 ///
+/// `allowed_exit_codes` controls which exit codes are treated as success.
+/// Pass `&[0]` for most commands, or `&[0, 2]` for `plan -detailed-exitcode`
+/// where exit code 2 means "changes present".
+///
+/// Respects the client's timeout setting. If the command exceeds the timeout,
+/// the child process is killed and [`Error::Timeout`] is returned.
+///
 /// Returns a [`CommandOutput`] with the complete stderr and exit code after
 /// the process finishes. Stdout is empty since lines were consumed by the
 /// handler.
@@ -88,6 +95,7 @@ pub struct JsonLogLine {
 pub async fn stream_terraform<C, F>(
     tf: &Terraform,
     command: C,
+    allowed_exit_codes: &[i32],
     mut handler: F,
 ) -> Result<CommandOutput>
 where
@@ -126,7 +134,7 @@ where
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
 
-    trace!(binary = ?tf.binary, args = ?args, "streaming terraform command");
+    trace!(binary = ?tf.binary, args = ?args, timeout_secs = ?tf.timeout.map(|t| t.as_secs()), "streaming terraform command");
 
     let mut child = cmd.spawn().map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
@@ -144,29 +152,48 @@ where
         source: std::io::Error::other("no stdout"),
     })?;
 
-    let mut reader = BufReader::new(stdout).lines();
+    let stream_and_wait = async {
+        let mut reader = BufReader::new(stdout).lines();
 
-    while let Some(line) = reader.next_line().await.map_err(|e| Error::Io {
-        message: format!("failed to read stdout line: {e}"),
-        source: e,
-    })? {
-        trace!(%line, "stream line");
-        match serde_json::from_str::<JsonLogLine>(&line) {
-            Ok(log_line) => handler(log_line),
-            Err(e) => {
-                warn!(%line, error = %e, "failed to parse streaming json line, skipping");
+        while let Some(line) = reader.next_line().await.map_err(|e| Error::Io {
+            message: format!("failed to read stdout line: {e}"),
+            source: e,
+        })? {
+            trace!(%line, "stream line");
+            match serde_json::from_str::<JsonLogLine>(&line) {
+                Ok(log_line) => handler(log_line),
+                Err(e) => {
+                    warn!(%line, error = %e, "failed to parse streaming json line, skipping");
+                }
             }
         }
-    }
 
-    let output = child.wait_with_output().await.map_err(|e| Error::Io {
-        message: format!("failed to wait for terraform: {e}"),
-        source: e,
-    })?;
+        child.wait_with_output().await.map_err(|e| Error::Io {
+            message: format!("failed to wait for terraform: {e}"),
+            source: e,
+        })
+    };
+
+    let output = if let Some(duration) = tf.timeout {
+        match tokio::time::timeout(duration, stream_and_wait).await {
+            Ok(result) => result?,
+            Err(_) => {
+                warn!(
+                    timeout_seconds = duration.as_secs(),
+                    "streaming terraform command timed out"
+                );
+                return Err(Error::Timeout {
+                    timeout_seconds: duration.as_secs(),
+                });
+            }
+        }
+    } else {
+        stream_and_wait.await?
+    };
 
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
     let exit_code = output.status.code().unwrap_or(-1);
-    let success = output.status.success();
+    let success = allowed_exit_codes.contains(&exit_code);
 
     debug!(exit_code, success, "streaming terraform command completed");
 
