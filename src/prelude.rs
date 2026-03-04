@@ -10,8 +10,8 @@
 pub use crate::Terraform;
 pub use crate::command::TerraformCommand;
 pub use crate::commands::{
-    ApplyCommand, DestroyCommand, FmtCommand, ImportCommand, InitCommand, OutputCommand,
-    OutputResult, PlanCommand, ShowCommand, ShowResult, StateCommand, ValidateCommand,
-    VersionCommand, WorkspaceCommand,
+    ApplyCommand, DestroyCommand, FmtCommand, ForceUnlockCommand, GetCommand, GraphCommand,
+    ImportCommand, InitCommand, ModulesCommand, OutputCommand, OutputResult, PlanCommand,
+    ShowCommand, ShowResult, StateCommand, ValidateCommand, VersionCommand, WorkspaceCommand,
 };
 pub use crate::exec::CommandOutput;

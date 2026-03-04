@@ -137,6 +137,8 @@
 //!     ShowCommand,     // terraform show (state or plan)
 //!     OutputCommand,   // terraform output
 //!     FmtCommand,      // terraform fmt
+//!     GraphCommand,    // terraform graph (DOT format)
+//!     ModulesCommand,  // terraform modules
 //!     VersionCommand,  // terraform version
 //! };
 //! ```
@@ -145,9 +147,11 @@
 //!
 //! ```rust
 //! use terraform_wrapper::commands::{
-//!     StateCommand,     // terraform state (list, show, mv, rm, pull, push)
-//!     WorkspaceCommand, // terraform workspace (list, show, new, select, delete)
-//!     ImportCommand,    // terraform import
+//!     StateCommand,       // terraform state (list, show, mv, rm, pull, push)
+//!     WorkspaceCommand,   // terraform workspace (list, show, new, select, delete)
+//!     ImportCommand,      // terraform import
+//!     ForceUnlockCommand, // terraform force-unlock
+//!     GetCommand,         // terraform get (download modules)
 //! };
 //! ```
 //!
