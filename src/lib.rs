@@ -155,6 +155,7 @@
 //!     ForceUnlockCommand, // terraform force-unlock
 //!     GetCommand,         // terraform get (download modules)
 //!     RefreshCommand,     // terraform refresh (deprecated)
+//!     RawCommand,         // any subcommand not covered above
 //! };
 //! ```
 //!
@@ -273,7 +274,7 @@
 //!
 //! Enable with:
 //! ```toml
-//! terraform-wrapper = { version = "0.1", features = ["config"] }
+//! terraform-wrapper = { version = "0.3", features = ["config"] }
 //! ```
 //!
 //! # Feature Flags
@@ -286,7 +287,7 @@
 //! Disable defaults for raw command output only:
 //!
 //! ```toml
-//! terraform-wrapper = { version = "0.1", default-features = false }
+//! terraform-wrapper = { version = "0.3", default-features = false }
 //! ```
 //!
 //! # OpenTofu Compatibility

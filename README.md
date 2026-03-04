@@ -11,7 +11,7 @@ A type-safe Terraform CLI wrapper for Rust.
 
 ```toml
 [dependencies]
-terraform-wrapper = "0.1"
+terraform-wrapper = "0.3"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 ```
 
@@ -63,20 +63,45 @@ Note: You must import the `TerraformCommand` trait to call `.execute()`. The `pr
 
 ## Commands
 
+### Lifecycle
+
 | Command | Description |
 |---------|-------------|
 | `InitCommand` | Prepare working directory, download providers |
-| `ValidateCommand` | Check configuration validity |
 | `PlanCommand` | Preview infrastructure changes |
 | `ApplyCommand` | Create or update infrastructure |
 | `DestroyCommand` | Destroy infrastructure |
-| `OutputCommand` | Read output values |
+
+### Inspection
+
+| Command | Description |
+|---------|-------------|
+| `ValidateCommand` | Check configuration validity |
 | `ShowCommand` | Inspect current state or saved plan |
+| `OutputCommand` | Read output values |
 | `FmtCommand` | Format configuration files |
-| `WorkspaceCommand` | Manage workspaces (list, new, select, delete) |
-| `StateCommand` | Advanced state management (list, show, mv, rm) |
-| `ImportCommand` | Import existing infrastructure into state |
+| `GraphCommand` | Generate DOT dependency graph |
+| `ModulesCommand` | List installed modules |
+| `ProvidersCommand` | Manage providers (lock, mirror, schema) |
+| `TestCommand` | Run Terraform test files |
 | `VersionCommand` | Get Terraform version info |
+
+### State and Workspace
+
+| Command | Description |
+|---------|-------------|
+| `WorkspaceCommand` | Manage workspaces (list, show, new, select, delete) |
+| `StateCommand` | Advanced state management (list, show, mv, rm, pull, push) |
+| `ImportCommand` | Import existing infrastructure into state |
+| `ForceUnlockCommand` | Manually unlock state |
+| `GetCommand` | Download and update modules |
+| `RefreshCommand` | Update state to match remote (deprecated) |
+
+### Escape Hatch
+
+| Command | Description |
+|---------|-------------|
+| `RawCommand` | Run any subcommand not covered above |
 
 ## Streaming Output
 
@@ -108,7 +133,7 @@ Define Terraform configs entirely in Rust -- no `.tf` files needed. Enable the `
 
 ```toml
 [dependencies]
-terraform-wrapper = { version = "0.1", features = ["config"] }
+terraform-wrapper = { version = "0.3", features = ["config"] }
 ```
 
 ```rust,no_run
@@ -144,7 +169,7 @@ Disable defaults for raw command output only:
 
 ```toml
 [dependencies]
-terraform-wrapper = { version = "0.1", default-features = false }
+terraform-wrapper = { version = "0.3", default-features = false }
 ```
 
 ## Why terraform-wrapper?
@@ -163,7 +188,13 @@ Use `terraform-wrapper` when you need to programmatically drive Terraform lifecy
 
 Full API reference is available on [docs.rs](https://docs.rs/terraform-wrapper).
 
-See the [`examples/`](examples/) directory for working examples.
+See the [`examples/`](examples/) directory for working examples:
+- [`ec2_instance`](examples/ec2_instance.rs) -- Full AWS lifecycle
+- [`gce_instance`](examples/gce_instance.rs) -- Full GCP lifecycle
+- [`streaming_apply`](examples/streaming_apply.rs) -- Real-time JSON event processing
+- [`config_builder`](examples/config_builder.rs) -- Generate `.tf.json` from Rust
+- [`workspace_management`](examples/workspace_management.rs) -- Create, switch, and delete workspaces
+- [`validate_and_fmt`](examples/validate_and_fmt.rs) -- Check and fix configuration
 
 ## License
 
