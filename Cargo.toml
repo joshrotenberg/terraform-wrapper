@@ -7,6 +7,7 @@ authors = ["Josh Rotenberg <joshrotenberg@gmail.com>"]
 description = "A type-safe Terraform CLI wrapper for Rust"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/joshrotenberg/terraform-wrapper"
+documentation = "https://docs.rs/terraform-wrapper"
 keywords = ["terraform", "infrastructure", "iac", "cli", "wrapper"]
 categories = ["development-tools", "api-bindings"]
 
