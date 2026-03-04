@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0](https://github.com/joshrotenberg/terraform-wrapper/compare/v0.2.0...v0.3.0) - 2026-03-04
+
+### Added
+
+- add Display impls for CommandOutput and OutputResult ([#55](https://github.com/joshrotenberg/terraform-wrapper/pull/55))
+- add module block support to TerraformConfig ([#54](https://github.com/joshrotenberg/terraform-wrapper/pull/54))
+- add providers, test, and refresh commands ([#44](https://github.com/joshrotenberg/terraform-wrapper/pull/44))
+- add RawCommand escape hatch for arbitrary subcommands ([#43](https://github.com/joshrotenberg/terraform-wrapper/pull/43))
+- add graph, force-unlock, get, and modules commands ([#42](https://github.com/joshrotenberg/terraform-wrapper/pull/42))
+
+### Fixed
+
+- use Error::Json variant for serde parse failures ([#53](https://github.com/joshrotenberg/terraform-wrapper/pull/53))
+- add timeout and configurable exit codes to stream_terraform ([#51](https://github.com/joshrotenberg/terraform-wrapper/pull/51))
+
+### Other
+
+- update README, expand command table, and add examples ([#56](https://github.com/joshrotenberg/terraform-wrapper/pull/56))
+- consolidate -input=false injection into TerraformCommand trait ([#52](https://github.com/joshrotenberg/terraform-wrapper/pull/52))
+- add documentation link to Cargo.toml ([#40](https://github.com/joshrotenberg/terraform-wrapper/pull/40))
+
 ## [0.2.0](https://github.com/joshrotenberg/terraform-wrapper/compare/v0.1.1...v0.2.0) - 2026-03-03
 
 ### Added
