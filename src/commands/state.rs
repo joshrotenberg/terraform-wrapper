@@ -397,6 +397,48 @@ mod tests {
     }
 
     #[test]
+    fn replace_provider_lock_timeout_args() {
+        let cmd = StateCommand::replace_provider(
+            "registry.terraform.io/hashicorp/aws",
+            "registry.terraform.io/acme/aws",
+        )
+        .lock_timeout("30s");
+        assert_eq!(
+            cmd.args(),
+            vec![
+                "state",
+                "replace-provider",
+                "-lock-timeout=30s",
+                "registry.terraform.io/hashicorp/aws",
+                "registry.terraform.io/acme/aws"
+            ]
+        );
+    }
+
+    #[test]
+    fn replace_provider_all_flags() {
+        let cmd = StateCommand::replace_provider(
+            "registry.terraform.io/hashicorp/aws",
+            "registry.terraform.io/acme/aws",
+        )
+        .auto_approve()
+        .lock(false)
+        .lock_timeout("30s");
+        assert_eq!(
+            cmd.args(),
+            vec![
+                "state",
+                "replace-provider",
+                "-auto-approve",
+                "-lock=false",
+                "-lock-timeout=30s",
+                "registry.terraform.io/hashicorp/aws",
+                "registry.terraform.io/acme/aws"
+            ]
+        );
+    }
+
+    #[test]
     fn list_ignores_mv_rm_flags() {
         let cmd = StateCommand::list()
             .dry_run()
