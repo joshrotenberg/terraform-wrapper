@@ -31,6 +31,8 @@ pub struct PlanCommand {
     replace: Vec<String>,
     destroy: bool,
     refresh_only: bool,
+    refresh: Option<bool>,
+    compact_warnings: bool,
     lock: Option<bool>,
     lock_timeout: Option<String>,
     parallelism: Option<u32>,
@@ -92,6 +94,22 @@ impl PlanCommand {
     #[must_use]
     pub fn refresh_only(mut self) -> Self {
         self.refresh_only = true;
+        self
+    }
+
+    /// Enable or disable refreshing state (`-refresh`).
+    ///
+    /// Pass `false` to skip checking for external changes during planning.
+    #[must_use]
+    pub fn refresh(mut self, enabled: bool) -> Self {
+        self.refresh = Some(enabled);
+        self
+    }
+
+    /// Show warnings in compact form (`-compact-warnings`).
+    #[must_use]
+    pub fn compact_warnings(mut self) -> Self {
+        self.compact_warnings = true;
         self
     }
 
@@ -171,6 +189,12 @@ impl TerraformCommand for PlanCommand {
         if self.refresh_only {
             args.push("-refresh-only".to_string());
         }
+        if let Some(refresh) = self.refresh {
+            args.push(format!("-refresh={refresh}"));
+        }
+        if self.compact_warnings {
+            args.push("-compact-warnings".to_string());
+        }
         if let Some(lock) = self.lock {
             args.push(format!("-lock={lock}"));
         }
@@ -218,6 +242,8 @@ mod tests {
             .target("module.vpc")
             .replace("aws_instance.web")
             .destroy()
+            .refresh(false)
+            .compact_warnings()
             .parallelism(10)
             .json();
         let args = cmd.args();
@@ -228,6 +254,8 @@ mod tests {
         assert!(args.contains(&"-target=module.vpc".to_string()));
         assert!(args.contains(&"-replace=aws_instance.web".to_string()));
         assert!(args.contains(&"-destroy".to_string()));
+        assert!(args.contains(&"-refresh=false".to_string()));
+        assert!(args.contains(&"-compact-warnings".to_string()));
         assert!(args.contains(&"-parallelism=10".to_string()));
         assert!(args.contains(&"-json".to_string()));
     }
