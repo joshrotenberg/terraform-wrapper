@@ -245,7 +245,18 @@
 //! # Config Builder
 //!
 //! With the `config` feature, define Terraform configurations entirely in Rust.
-//! No `.tf` files needed -- generates `.tf.json` that Terraform processes natively:
+//! No `.tf` files needed -- generates `.tf.json` that Terraform processes natively.
+//!
+//! Available builder methods:
+//! [`required_provider`](config::TerraformConfig::required_provider),
+//! [`backend`](config::TerraformConfig::backend),
+//! [`provider`](config::TerraformConfig::provider),
+//! [`variable`](config::TerraformConfig::variable),
+//! [`data`](config::TerraformConfig::data),
+//! [`resource`](config::TerraformConfig::resource),
+//! [`local`](config::TerraformConfig::local),
+//! [`module`](config::TerraformConfig::module),
+//! [`output`](config::TerraformConfig::output).
 //!
 //! ```rust
 //! # #[cfg(feature = "config")]
@@ -255,17 +266,36 @@
 //!
 //! let config = TerraformConfig::new()
 //!     .required_provider("aws", "hashicorp/aws", "~> 5.0")
-//!     .provider("aws", json!({ "region": "us-west-2" }))
-//!     .resource("aws_instance", "web", json!({
-//!         "ami": "ami-0c55b159",
-//!         "instance_type": "${var.instance_type}"
+//!     .backend("s3", json!({
+//!         "bucket": "my-tf-state",
+//!         "key": "terraform.tfstate",
+//!         "region": "us-west-2"
 //!     }))
+//!     .provider("aws", json!({ "region": "us-west-2" }))
 //!     .variable("instance_type", json!({
 //!         "type": "string", "default": "t3.micro"
 //!     }))
-//!     .output("id", json!({ "value": "${aws_instance.web.id}" }));
+//!     .data("aws_ami", "latest", json!({
+//!         "most_recent": true,
+//!         "owners": ["amazon"]
+//!     }))
+//!     .resource("aws_instance", "web", json!({
+//!         "ami": "${data.aws_ami.latest.id}",
+//!         "instance_type": "${var.instance_type}"
+//!     }))
+//!     .local("common_tags", json!({
+//!         "Environment": "production",
+//!         "ManagedBy": "terraform-wrapper"
+//!     }))
+//!     .module("vpc", json!({
+//!         "source": "terraform-aws-modules/vpc/aws",
+//!         "version": "~> 5.0",
+//!         "cidr": "10.0.0.0/16"
+//!     }))
+//!     .output("instance_id", json!({
+//!         "value": "${aws_instance.web.id}"
+//!     }));
 //!
-//! // Write to a tempdir for ephemeral use
 //! let dir = config.write_to_tempdir()?;
 //! // Terraform::builder().working_dir(dir.path()).build()?;
 //! # Ok(())

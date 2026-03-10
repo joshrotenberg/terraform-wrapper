@@ -143,12 +143,17 @@ use serde_json::json;
 # fn example() -> std::io::Result<()> {
 let config = TerraformConfig::new()
     .required_provider("aws", "hashicorp/aws", "~> 5.0")
+    .backend("s3", json!({ "bucket": "my-tf-state", "key": "state", "region": "us-west-2" }))
     .provider("aws", json!({ "region": "us-west-2" }))
+    .variable("instance_type", json!({ "type": "string", "default": "t3.micro" }))
+    .data("aws_ami", "latest", json!({ "most_recent": true, "owners": ["amazon"] }))
     .resource("aws_instance", "web", json!({
-        "ami": "ami-0c55b159",
-        "instance_type": "t3.micro"
+        "ami": "${data.aws_ami.latest.id}",
+        "instance_type": "${var.instance_type}"
     }))
-    .output("id", json!({ "value": "${aws_instance.web.id}" }));
+    .local("common_tags", json!({ "ManagedBy": "terraform-wrapper" }))
+    .module("vpc", json!({ "source": "terraform-aws-modules/vpc/aws", "version": "~> 5.0" }))
+    .output("instance_id", json!({ "value": "${aws_instance.web.id}" }));
 
 let dir = config.write_to_tempdir()?;
 // Terraform::builder().working_dir(dir.path()).build()?;
@@ -156,7 +161,7 @@ let dir = config.write_to_tempdir()?;
 # }
 ```
 
-See the [`config_builder` example](examples/config_builder.rs) for a complete working example.
+See the [`config_builder` example](examples/config_builder.rs) and the [`TerraformConfig` API docs](https://docs.rs/terraform-wrapper/latest/terraform_wrapper/config/struct.TerraformConfig.html) for full details.
 
 ## Features
 

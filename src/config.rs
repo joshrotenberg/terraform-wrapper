@@ -4,6 +4,12 @@
 //! alongside HCL. This module provides a builder API to construct configs
 //! entirely in Rust and serialize them to `.tf.json`.
 //!
+//! Supported block types: [`required_provider`](TerraformConfig::required_provider),
+//! [`backend`](TerraformConfig::backend), [`provider`](TerraformConfig::provider),
+//! [`variable`](TerraformConfig::variable), [`data`](TerraformConfig::data),
+//! [`resource`](TerraformConfig::resource), [`local`](TerraformConfig::local),
+//! [`module`](TerraformConfig::module), [`output`](TerraformConfig::output).
+//!
 //! # Example
 //!
 //! ```rust
@@ -12,10 +18,16 @@
 //!
 //! let config = TerraformConfig::new()
 //!     .required_provider("null", "hashicorp/null", "~> 3.0")
+//!     .provider("null", json!({}))
+//!     .variable("name", json!({ "type": "string", "default": "world" }))
+//!     .data("null_data_source", "values", json!({
+//!         "inputs": { "greeting": "hello" }
+//!     }))
 //!     .resource("null_resource", "example", json!({
 //!         "triggers": { "value": "hello" }
 //!     }))
-//!     .variable("name", json!({ "type": "string", "default": "world" }))
+//!     .local("tag", json!("test"))
+//!     .module("child", json!({ "source": "./modules/child" }))
 //!     .output("id", json!({ "value": "${null_resource.example.id}" }));
 //!
 //! let json = config.to_json_pretty().unwrap();

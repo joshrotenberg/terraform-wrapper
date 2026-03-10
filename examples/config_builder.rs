@@ -3,6 +3,13 @@
 //! No .tf files needed -- generates .tf.json, runs init/apply, reads outputs,
 //! then destroys. Uses null_resource so no cloud credentials are needed.
 //!
+//! Demonstrates all available TerraformConfig builder methods:
+//! required_provider, provider, variable, data, resource, local, output.
+//!
+//! Note: backend and module are also supported but not shown here because
+//! backend requires real remote state configuration and module requires
+//! a valid module path to run successfully.
+//!
 //! Usage:
 //!   cargo run --example config_builder --features config
 
@@ -16,23 +23,32 @@ use terraform_wrapper::{Terraform, TerraformCommand};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Define infrastructure in code
+    // Define infrastructure in code using all block types that work
+    // without external dependencies
     let config = TerraformConfig::new()
         .required_provider("null", "hashicorp/null", "~> 3.0")
+        .provider("null", json!({}))
+        .variable(
+            "greeting",
+            json!({ "type": "string", "default": "Hello from terraform-wrapper!" }),
+        )
+        .data(
+            "null_data_source",
+            "greeting_data",
+            json!({ "inputs": { "greeting": "${var.greeting}" } }),
+        )
         .resource(
             "null_resource",
             "greeting",
             json!({ "triggers": { "message": "${var.greeting}" } }),
         )
-        .variable(
-            "greeting",
-            json!({ "type": "string", "default": "Hello from terraform-wrapper!" }),
-        )
+        .local("app_name", json!("config-builder-example"))
         .output("message", json!({ "value": "${var.greeting}" }))
         .output(
             "resource_id",
             json!({ "value": "${null_resource.greeting.id}" }),
-        );
+        )
+        .output("app_name", json!({ "value": "${local.app_name}" }));
 
     // Write to a temp directory
     let dir = config.write_to_tempdir()?;
