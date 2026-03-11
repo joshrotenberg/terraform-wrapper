@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0](https://github.com/joshrotenberg/terraform-wrapper/compare/v0.3.0...v0.4.0) - 2026-03-11
+
+### Added
+
+- add state replace-provider subcommand ([#81](https://github.com/joshrotenberg/terraform-wrapper/pull/81))
+- add missing flags to Init, Plan, Test, and State commands ([#79](https://github.com/joshrotenberg/terraform-wrapper/pull/79))
+
+### Other
+
+- release readiness ([#82](https://github.com/joshrotenberg/terraform-wrapper/pull/82))
+- expand TerraformConfig documentation in README and examples ([#59](https://github.com/joshrotenberg/terraform-wrapper/pull/59))
+
 ## [0.3.0](https://github.com/joshrotenberg/terraform-wrapper/compare/v0.2.0...v0.3.0) - 2026-03-04
 
 ### Added
