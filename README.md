@@ -91,7 +91,7 @@ Note: You must import the `TerraformCommand` trait to call `.execute()`. The `pr
 | Command | Description |
 |---------|-------------|
 | `WorkspaceCommand` | Manage workspaces (list, show, new, select, delete) |
-| `StateCommand` | Advanced state management (list, show, mv, rm, pull, push) |
+| `StateCommand` | Advanced state management (list, show, mv, rm, pull, push, replace-provider) |
 | `ImportCommand` | Import existing infrastructure into state |
 | `ForceUnlockCommand` | Manually unlock state |
 | `GetCommand` | Download and update modules |

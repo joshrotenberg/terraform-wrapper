@@ -149,7 +149,7 @@
 //!
 //! ```rust
 //! use terraform_wrapper::commands::{
-//!     StateCommand,       // terraform state (list, show, mv, rm, pull, push)
+//!     StateCommand,       // terraform state (list, show, mv, rm, pull, push, replace-provider)
 //!     WorkspaceCommand,   // terraform workspace (list, show, new, select, delete)
 //!     ImportCommand,      // terraform import
 //!     ForceUnlockCommand, // terraform force-unlock
