@@ -23,6 +23,13 @@ pub enum StateSubcommand {
     Pull,
     /// Push local state to remote backend.
     Push,
+    /// Replace a provider in the state.
+    ReplaceProvider {
+        /// Source provider fully-qualified name.
+        from: String,
+        /// Destination provider fully-qualified name.
+        to: String,
+    },
 }
 
 /// Command for managing Terraform state.
@@ -47,6 +54,7 @@ pub enum StateSubcommand {
 #[derive(Debug, Clone)]
 pub struct StateCommand {
     subcommand: StateSubcommand,
+    auto_approve: bool,
     dry_run: bool,
     lock: Option<bool>,
     lock_timeout: Option<String>,
@@ -59,6 +67,7 @@ impl StateCommand {
     pub fn list() -> Self {
         Self {
             subcommand: StateSubcommand::List,
+            auto_approve: false,
             dry_run: false,
             lock: None,
             lock_timeout: None,
@@ -71,6 +80,7 @@ impl StateCommand {
     pub fn show(address: &str) -> Self {
         Self {
             subcommand: StateSubcommand::Show(address.to_string()),
+            auto_approve: false,
             dry_run: false,
             lock: None,
             lock_timeout: None,
@@ -86,6 +96,7 @@ impl StateCommand {
                 source: source.to_string(),
                 destination: destination.to_string(),
             },
+            auto_approve: false,
             dry_run: false,
             lock: None,
             lock_timeout: None,
@@ -98,6 +109,7 @@ impl StateCommand {
     pub fn rm(addresses: Vec<String>) -> Self {
         Self {
             subcommand: StateSubcommand::Rm(addresses),
+            auto_approve: false,
             dry_run: false,
             lock: None,
             lock_timeout: None,
@@ -110,6 +122,7 @@ impl StateCommand {
     pub fn pull() -> Self {
         Self {
             subcommand: StateSubcommand::Pull,
+            auto_approve: false,
             dry_run: false,
             lock: None,
             lock_timeout: None,
@@ -122,11 +135,56 @@ impl StateCommand {
     pub fn push() -> Self {
         Self {
             subcommand: StateSubcommand::Push,
+            auto_approve: false,
             dry_run: false,
             lock: None,
             lock_timeout: None,
             raw_args: Vec::new(),
         }
+    }
+
+    /// Replace a provider in the state.
+    ///
+    /// Migrates resources from one provider to another without modifying
+    /// the actual infrastructure.
+    ///
+    /// ```no_run
+    /// # async fn example() -> terraform_wrapper::error::Result<()> {
+    /// # use terraform_wrapper::{Terraform, TerraformCommand};
+    /// # use terraform_wrapper::commands::state::StateCommand;
+    /// # let tf = Terraform::builder().working_dir("/tmp/infra").build()?;
+    /// StateCommand::replace_provider(
+    ///     "registry.terraform.io/-/aws",
+    ///     "registry.terraform.io/hashicorp/aws",
+    /// )
+    /// .auto_approve()
+    /// .execute(&tf)
+    /// .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn replace_provider(from: &str, to: &str) -> Self {
+        Self {
+            subcommand: StateSubcommand::ReplaceProvider {
+                from: from.to_string(),
+                to: to.to_string(),
+            },
+            auto_approve: false,
+            dry_run: false,
+            lock: None,
+            lock_timeout: None,
+            raw_args: Vec::new(),
+        }
+    }
+
+    /// Skip interactive approval (`-auto-approve`).
+    ///
+    /// Applies to `replace-provider` subcommand only.
+    #[must_use]
+    pub fn auto_approve(mut self) -> Self {
+        self.auto_approve = true;
+        self
     }
 
     /// Preview the operation without making changes (`-dry-run`).
@@ -140,7 +198,7 @@ impl StateCommand {
 
     /// Enable or disable state locking (`-lock`).
     ///
-    /// Applies to `mv` and `rm` subcommands only; ignored for other subcommands.
+    /// Applies to `mv`, `rm`, and `replace-provider` subcommands.
     #[must_use]
     pub fn lock(mut self, enabled: bool) -> Self {
         self.lock = Some(enabled);
@@ -149,7 +207,7 @@ impl StateCommand {
 
     /// Duration to wait for state lock (`-lock-timeout`).
     ///
-    /// Applies to `mv` and `rm` subcommands only; ignored for other subcommands.
+    /// Applies to `mv`, `rm`, and `replace-provider` subcommands.
     #[must_use]
     pub fn lock_timeout(mut self, timeout: &str) -> Self {
         self.lock_timeout = Some(timeout.to_string());
@@ -163,8 +221,8 @@ impl StateCommand {
         self
     }
 
-    /// Push mv/rm-specific flags into the args list.
-    fn push_mv_rm_flags(&self, args: &mut Vec<String>) {
+    /// Push lock-related flags into the args list.
+    fn push_lock_flags(&self, args: &mut Vec<String>) {
         if self.dry_run {
             args.push("-dry-run".to_string());
         }
@@ -193,17 +251,26 @@ impl TerraformCommand for StateCommand {
                 destination,
             } => {
                 args.push("mv".to_string());
-                self.push_mv_rm_flags(&mut args);
+                self.push_lock_flags(&mut args);
                 args.push(source.clone());
                 args.push(destination.clone());
             }
             StateSubcommand::Rm(addresses) => {
                 args.push("rm".to_string());
-                self.push_mv_rm_flags(&mut args);
+                self.push_lock_flags(&mut args);
                 args.extend(addresses.clone());
             }
             StateSubcommand::Pull => args.push("pull".to_string()),
             StateSubcommand::Push => args.push("push".to_string()),
+            StateSubcommand::ReplaceProvider { from, to } => {
+                args.push("replace-provider".to_string());
+                if self.auto_approve {
+                    args.push("-auto-approve".to_string());
+                }
+                self.push_lock_flags(&mut args);
+                args.push(from.clone());
+                args.push(to.clone());
+            }
         }
         args.extend(self.raw_args.clone());
         args
@@ -303,6 +370,63 @@ mod tests {
     fn push_args() {
         let cmd = StateCommand::push();
         assert_eq!(cmd.args(), vec!["state", "push"]);
+    }
+
+    #[test]
+    fn replace_provider_args() {
+        let cmd = StateCommand::replace_provider(
+            "registry.terraform.io/-/aws",
+            "registry.terraform.io/hashicorp/aws",
+        );
+        assert_eq!(
+            cmd.args(),
+            vec![
+                "state",
+                "replace-provider",
+                "registry.terraform.io/-/aws",
+                "registry.terraform.io/hashicorp/aws"
+            ]
+        );
+    }
+
+    #[test]
+    fn replace_provider_auto_approve_args() {
+        let cmd = StateCommand::replace_provider(
+            "registry.terraform.io/-/aws",
+            "registry.terraform.io/hashicorp/aws",
+        )
+        .auto_approve()
+        .lock(false);
+        assert_eq!(
+            cmd.args(),
+            vec![
+                "state",
+                "replace-provider",
+                "-auto-approve",
+                "-lock=false",
+                "registry.terraform.io/-/aws",
+                "registry.terraform.io/hashicorp/aws"
+            ]
+        );
+    }
+
+    #[test]
+    fn replace_provider_lock_timeout_args() {
+        let cmd = StateCommand::replace_provider(
+            "registry.terraform.io/-/aws",
+            "registry.terraform.io/hashicorp/aws",
+        )
+        .lock_timeout("30s");
+        assert_eq!(
+            cmd.args(),
+            vec![
+                "state",
+                "replace-provider",
+                "-lock-timeout=30s",
+                "registry.terraform.io/-/aws",
+                "registry.terraform.io/hashicorp/aws"
+            ]
+        );
     }
 
     #[test]
