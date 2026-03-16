@@ -28,9 +28,9 @@ which = "8.0"
 
 serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0", optional = true }
-tempfile = { version = "3.0", optional = true }
+tempfile = { version = "3.27", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["process", "rt-multi-thread", "macros", "io-util", "time"] }
 serde_json = "1.0"
-tempfile = "3.0"
+tempfile = "3.27"
