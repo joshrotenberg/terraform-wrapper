@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1](https://github.com/joshrotenberg/terraform-wrapper/compare/v0.4.0...v0.4.1) - 2026-04-06
+
+### Other
+
+- bump tokio from 1.50.0 to 1.51.0 in the tokio-ecosystem group ([#85](https://github.com/joshrotenberg/terraform-wrapper/pull/85))
+- bump tempfile from 3.26.0 to 3.27.0 ([#84](https://github.com/joshrotenberg/terraform-wrapper/pull/84))
+
 ## [0.4.0](https://github.com/joshrotenberg/terraform-wrapper/compare/v0.3.0...v0.4.0) - 2026-03-11
 
 ### Added
